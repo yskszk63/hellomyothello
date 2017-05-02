@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>my test</title>
+    </head>
+    <body>
+        <script>
+(() => {
+    self.Module = {};
+
+    fetch('hello.wasm').then(response => response.arrayBuffer())
+        .then(bin => {
+            Module.wasmBinary = bin;
+            document.body.appendChild(Object.assign(document.createElement('script'), {
+                src: 'hello.js'
+            }))
+        });
+})();
+        </script>
+    </body>
+</html>
