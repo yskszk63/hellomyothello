@@ -8,12 +8,12 @@
 (() => {
     self.Module = {};
 
-    fetch('hello.wasm').then(response => response.arrayBuffer())
+    fetch('js/hello.wasm').then(response => response.arrayBuffer())
         .then(bin => {
             Module.wasmBinary = bin;
             document.body.appendChild(Object.assign(document.createElement('script'), {
-                src: 'hello.js'
-            }))
+                src: 'js/hello.js'
+            }));
         });
 })();
         </script>

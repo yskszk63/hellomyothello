@@ -1,0 +1,7 @@
+[package]
+name = "helloworldjs"
+version = "0.0.1"
+authors = ["yskszk63 <yskszk63@gmail.com>"]
+
+[dependencies]
+webplatform = "0.4.2"

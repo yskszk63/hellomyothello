@@ -1,3 +1,5 @@
 *.asm.js
 *.js
 *.wasm
+target/
+js/
