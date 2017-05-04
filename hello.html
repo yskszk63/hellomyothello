@@ -4,9 +4,12 @@
         <title>my test</title>
     </head>
     <body>
+        <canvas></canvas>
         <script>
 (() => {
-    self.Module = {};
+    self.Module = {
+        canvas: document.querySelector('canvas')
+    };
 
     fetch('js/hello.wasm').then(response => response.arrayBuffer())
         .then(bin => {
