@@ -72,7 +72,8 @@ pub struct Board<'a> {
     cells: Vec<Cell<'a>>,
     current: StdCell<CellState>,
     settings: &'a AppSettings,
-    focus: StdCell<Option<(u32, u32)>>
+    focus: StdCell<Option<(u32, u32)>>,
+    invalidate: StdCell<bool>,
 }
 
 impl <'a> Board<'a> {
@@ -82,6 +83,7 @@ impl <'a> Board<'a> {
             current: StdCell::new(CellState::Black),
             settings: settings,
             focus: StdCell::new(None),
+            invalidate: StdCell::new(true),
         };
 
         let herf_of_cols = settings.cols / 2;
@@ -106,15 +108,23 @@ impl <'a> Board<'a> {
     }
 
     pub fn render(&self, ctx: &Context, gl: &mut GlGraphics) {
-        graphics::clear(self.settings.background_color, gl);
+        if self.invalidate.get() {
+            self.invalidate.set(false);
 
-        for (i, cell) in self.cells.iter().enumerate() {
-            let x = i as u32 % self.settings.cols;
-            let y = i as u32 / self.settings.rows;
+            graphics::clear(self.settings.background_color, gl);
 
-            let transform = ctx.transform.trans((x * self.settings.cell_size) as f64, (y * self.settings.cell_size) as f64);
-            cell.render(transform, gl);
+            for (i, cell) in self.cells.iter().enumerate() {
+                let x = i as u32 % self.settings.cols;
+                let y = i as u32 / self.settings.rows;
+
+                let transform = ctx.transform.trans((x * self.settings.cell_size) as f64, (y * self.settings.cell_size) as f64);
+                cell.render(transform, gl);
+            }
         }
+    }
+
+    pub fn update(&self) {
+        self.invalidate.set(true);
     }
 
     pub fn get_cell<'b>(&'b self, x: u32, y: u32) -> Option<&'b Cell<'a>> {

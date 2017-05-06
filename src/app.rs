@@ -51,6 +51,7 @@ impl <'a> App<'a> {
     }
 
     pub fn update(&mut self) {
+        self.board.update();
     }
 
     pub fn click(&self) {
