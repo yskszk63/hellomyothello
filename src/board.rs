@@ -15,17 +15,17 @@ pub enum CellState {
 }
 
 impl CellState {
-    fn render(&self, cell: &Cell, transform: Matrix2d, gl: &mut GlGraphics) {
-        let cell_margin = cell.margin();
-        let cell_size = cell.settings.cell_size;
+    pub fn render(&self, settings: &AppSettings, transform: Matrix2d, gl: &mut GlGraphics) {
+        let cell_margin = settings.cell_margin();
+        let cell_size = settings.cell_size;
         let stone = graphics::rectangle::square(cell_margin * 2f64, cell_margin * 2f64, cell_size as f64 - (cell_margin * 4f64));
 
         match *self {
             CellState::Black => {
-                graphics::ellipse(cell.settings.black_stone_color, stone, transform, gl)
+                graphics::ellipse(settings.black_stone_color, stone, transform, gl)
             },
             CellState::White => {
-                graphics::ellipse(cell.settings.white_stone_color, stone, transform, gl)
+                graphics::ellipse(settings.white_stone_color, stone, transform, gl)
             },
             CellState::Empty => {}
         }
@@ -52,7 +52,7 @@ impl <'a> Cell<'a> {
     }
 
     fn render(&self, ctx: Matrix2d, gl: &mut GlGraphics) {
-        let cell_margin = self.margin();
+        let cell_margin = self.settings.cell_margin();
         let cell_size = self.settings.cell_size;
         let inner = graphics::rectangle::square(cell_margin * 1f64, cell_margin * 1f64, cell_size as f64 - (cell_margin * 2f64));
         let outer = graphics::rectangle::square(cell_margin * 0f64, cell_margin * 0f64, cell_size as f64 - (cell_margin * 0f64));
@@ -60,11 +60,7 @@ impl <'a> Cell<'a> {
         let color = if self.focused.get() { self.settings.focused_background_color} else { self.settings.background_color };
         graphics::rectangle(self.settings.separator_color, outer, ctx, gl);
         graphics::rectangle(color, inner, ctx, gl);
-        self.state.get().render(self, ctx, gl);
-    }
-
-    fn margin(&self) -> f64 {
-        self.settings.cell_size as f64 * 0.05f64
+        self.state.get().render(self.settings, ctx, gl);
     }
 
 }
@@ -129,6 +125,14 @@ impl <'a> Board<'a> {
         if self.current.get() == CellState::Black {
             self.cpu();
         }
+    }
+
+    pub fn size(&self) -> (u32, u32){
+        (self.settings.cols * self.settings.cell_size, self.settings.cols * self.settings.cell_size)
+    }
+
+    pub fn get_current_state(&self) -> CellState {
+        self.current.get()
     }
 
     fn cpu(&self) {
