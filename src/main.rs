@@ -2,6 +2,7 @@ extern crate opengl_graphics;
 extern crate sdl2_window;
 extern crate piston;
 extern crate graphics;
+extern crate rand;
 
 use app::{App, AppSettings};
 use opengl_graphics::{GlGraphics, OpenGL};

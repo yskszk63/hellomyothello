@@ -5,6 +5,7 @@ use graphics::math::Matrix2d;
 use app::AppSettings;
 use std::cell::Cell as StdCell;
 use std::iter;
+use rand;
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum CellState {
@@ -31,7 +32,7 @@ impl CellState {
     }
 }
 
-pub struct Cell<'a> {
+struct Cell<'a> {
     state: StdCell<CellState>,
     x: u32,
     y: u32,
@@ -125,9 +126,18 @@ impl <'a> Board<'a> {
 
     pub fn update(&self) {
         self.invalidate.set(true);
+        if self.current.get() == CellState::Black {
+            self.cpu();
+        }
     }
 
-    pub fn get_cell<'b>(&'b self, x: u32, y: u32) -> Option<&'b Cell<'a>> {
+    fn cpu(&self) {
+        let x = rand::random::<u32>() % self.settings.rows;
+        let y = rand::random::<u32>() % self.settings.cols;
+        self.put(x, y);
+    }
+
+    fn get_cell<'b>(&'b self, x: u32, y: u32) -> Option<&'b Cell<'a>> {
         let index = (y * self.settings.rows + x) as usize;
         if self.cells.len() > index {
             Some(&self.cells[index])
@@ -147,12 +157,14 @@ impl <'a> Board<'a> {
     }
 
     pub fn click(&self) {
-        if let Some((x, y)) = self.focus.get() {
-            self.clicked(x, y);
+        if self.current.get() == CellState::White {
+            if let Some((x, y)) = self.focus.get() {
+                self.put(x, y);
+            }
         }
     }
 
-    pub fn clicked(&self, x: u32, y: u32) {
+    fn put(&self, x: u32, y: u32) {
         if let Some(cell) = self.get_cell(x, y) {
             let current = self.current.get();
 
