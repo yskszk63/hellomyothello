@@ -1,13 +1,13 @@
 use opengl_graphics::{GlGraphics};
-use piston::input::{RenderArgs, MouseButton};
+use piston::input::{RenderArgs};
 use board::Board;
-use std::cell::Cell as StdCell;
 
 pub struct AppSettings {
     pub cell_size: u32,
     pub cols: u32,
     pub rows: u32,
     pub background_color: [f32; 4],
+    pub focused_background_color: [f32; 4],
     pub separator_color: [f32; 4],
     pub black_stone_color: [f32; 4],
     pub white_stone_color: [f32; 4],
@@ -20,6 +20,7 @@ impl Default for AppSettings {
             cols: 8,
             rows: 8,
             background_color: hex_color("008800"),
+            focused_background_color: hex_color("00ff00"),
             separator_color: hex_color("000000"),
             black_stone_color: hex_color("000000"),
             white_stone_color: hex_color("ffffff")
@@ -31,7 +32,6 @@ pub struct App<'a> {
     pub win_size: (u32, u32),
     settings: &'a AppSettings,
     board: Board<'a>,
-    focus: StdCell<Option<(u32, u32)>>
 }
 
 impl <'a> App<'a> {
@@ -41,7 +41,6 @@ impl <'a> App<'a> {
             win_size: win_size,
             settings: settings,
             board: Board::new(settings),
-            focus: StdCell::new(None)
         }
     }
 
@@ -54,22 +53,14 @@ impl <'a> App<'a> {
     pub fn update(&mut self) {
     }
 
-    pub fn click(&self, button: &MouseButton) {
-        match *button {
-            MouseButton::Left => {},
-            _ => {}
-        }
-        if let Some((x, y)) = self.focus.get() {
-            self.board.clicked(x, y);
-        }
+    pub fn click(&self) {
+        self.board.click();
     }
 
     pub fn mouse_move(&self, x: f64, y: f64) {
         let cell_x = x as u32 / self.settings.cell_size;
         let cell_y = y as u32 / self.settings.cell_size;
-        if let Some(cell) = self.board.get_cell(cell_x, cell_y) {
-            self.focus.set(Some((cell.x, cell.y)));
-        }
+        self.board.focus(cell_x, cell_y);
     }
 
 }

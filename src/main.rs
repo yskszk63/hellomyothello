@@ -17,7 +17,7 @@ fn main() {
     let app = App::new(&app_settings);
 
     let opengl = OpenGL::V2_1;
-    let window: Sdl2Window = WindowSettings::new("rustwasmtest", app.win_size)
+    let window: Sdl2Window = WindowSettings::new(env!("CARGO_PKG_NAME"), app.win_size)
         .opengl(opengl)
         .srgb(false)
         .exit_on_esc(true)
@@ -42,8 +42,8 @@ fn handle_event(window: &mut Sdl2Window, gl: &mut GlGraphics, e: Input, app: &mu
         app.mouse_move(pos[0], pos[1]);
     }
 
-    if let Some(Button::Mouse(ref button)) = e.press_args() {
-        app.click(button);
+    if let Some(Button::Mouse(_)) = e.press_args() {
+        app.click();
     }
 }
 

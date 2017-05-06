@@ -32,9 +32,10 @@ impl CellState {
 }
 
 pub struct Cell<'a> {
-    pub state: StdCell<CellState>,
-    pub x: u32,
-    pub y: u32,
+    state: StdCell<CellState>,
+    x: u32,
+    y: u32,
+    focused: StdCell<bool>,
     settings: &'a AppSettings,
 }
 
@@ -44,6 +45,7 @@ impl <'a> Cell<'a> {
             state: StdCell::new(CellState::Empty),
             x: x,
             y: y,
+            focused: StdCell::new(false),
             settings: settings,
         }
     }
@@ -54,8 +56,9 @@ impl <'a> Cell<'a> {
         let inner = graphics::rectangle::square(cell_margin * 1f64, cell_margin * 1f64, cell_size as f64 - (cell_margin * 2f64));
         let outer = graphics::rectangle::square(cell_margin * 0f64, cell_margin * 0f64, cell_size as f64 - (cell_margin * 0f64));
 
+        let color = if self.focused.get() { self.settings.focused_background_color} else { self.settings.background_color };
         graphics::rectangle(self.settings.separator_color, outer, ctx, gl);
-        graphics::rectangle(self.settings.background_color, inner, ctx, gl);
+        graphics::rectangle(color, inner, ctx, gl);
         self.state.get().render(self, ctx, gl);
     }
 
@@ -69,6 +72,7 @@ pub struct Board<'a> {
     cells: Vec<Cell<'a>>,
     current: StdCell<CellState>,
     settings: &'a AppSettings,
+    focus: StdCell<Option<(u32, u32)>>
 }
 
 impl <'a> Board<'a> {
@@ -77,6 +81,7 @@ impl <'a> Board<'a> {
             cells: Vec::<Cell>::new(),
             current: StdCell::new(CellState::Black),
             settings: settings,
+            focus: StdCell::new(None),
         };
 
         let herf_of_cols = settings.cols / 2;
@@ -118,6 +123,22 @@ impl <'a> Board<'a> {
             Some(&self.cells[index])
         } else {
             None
+        }
+    }
+
+    pub fn focus(&self, x: u32, y: u32) {
+        if let Some(cell) = self.focus.get().and_then(|(x,y)| { self.get_cell(x, y) }) {
+            cell.focused.set(false);
+        }
+        if let Some(cell) = self.get_cell(x, y) {
+            self.focus.set(Some((cell.x, cell.y)));
+            cell.focused.set(true);
+        }
+    }
+
+    pub fn click(&self) {
+        if let Some((x, y)) = self.focus.get() {
+            self.clicked(x, y);
         }
     }
 
