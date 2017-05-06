@@ -1,29 +1,29 @@
-extern crate board_game_geom as geom;
 extern crate opengl_graphics;
 extern crate sdl2_window;
 extern crate piston;
+extern crate graphics;
 
 use app::{App, AppSettings};
 use opengl_graphics::{GlGraphics, OpenGL};
-use piston::input::{Input, RenderEvent, UpdateEvent, PressEvent};
+use piston::input::{Input, RenderEvent, UpdateEvent, PressEvent, MouseCursorEvent, Button};
 use piston::window::{OpenGLWindow, WindowSettings};
 use sdl2_window::Sdl2Window;
 
 mod app;
+mod board;
 
 fn main() {
     let app_settings = AppSettings::default();
+    let app = App::new(&app_settings);
+
     let opengl = OpenGL::V2_1;
-    let window: Sdl2Window = WindowSettings::new("rustwasmtest",
-        (app_settings.win_size.0 as u32, app_settings.win_size.1 as u32))
+    let window: Sdl2Window = WindowSettings::new("rustwasmtest", app.win_size)
         .opengl(opengl)
         .srgb(false)
         .exit_on_esc(true)
         .build()
         .expect("failed to build window");
     let gl = GlGraphics::new(opengl);
-
-    let app = App::new(&app_settings);
 
     event_loop::run(window, gl, handle_event, app);
 }
@@ -34,12 +34,16 @@ fn handle_event(window: &mut Sdl2Window, gl: &mut GlGraphics, e: Input, app: &mu
         app.render(args, gl);
     }
 
-    if let Some(ref args) = e.update_args() {
-        app.update(args);
+    if let Some(_) = e.update_args() {
+        app.update();
     }
 
-    if let Some(ref args) = e.press_args() {
-        app.press(args);
+    if let Some(pos) = e.mouse_cursor_args() {
+        app.mouse_move(pos[0], pos[1]);
+    }
+
+    if let Some(Button::Mouse(ref button)) = e.press_args() {
+        app.click(button);
     }
 }
 
@@ -79,8 +83,8 @@ mod event_loop {
         arg: T
     }
 
-    pub fn run<T>(mut window: Sdl2Window, mut gl: GlGraphics,
-            handler: fn(window: &mut Sdl2Window, gl: &mut GlGraphics, e: Input, arg: &mut T), mut arg: T) {
+    pub fn run<T>(window: Sdl2Window, gl: GlGraphics,
+            handler: fn(window: &mut Sdl2Window, gl: &mut GlGraphics, e: Input, arg: &mut T), arg: T) {
 
         unsafe {
             let mut events = Box::new(Context {

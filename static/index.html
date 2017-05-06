@@ -11,11 +11,11 @@
         canvas: document.querySelector('canvas')
     };
 
-    fetch('js/hello.wasm').then(response => response.arrayBuffer())
+    fetch('hello.wasm').then(response => response.arrayBuffer())
         .then(bin => {
             Module.wasmBinary = bin;
             document.body.appendChild(Object.assign(document.createElement('script'), {
-                src: 'js/hello.js'
+                src: 'hello.js'
             }));
         });
 })();

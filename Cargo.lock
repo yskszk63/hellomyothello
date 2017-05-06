@@ -1,5 +1,5 @@
 [root]
-name = "helloworldjs"
+name = "hellomyothello"
 version = "0.0.1"
 dependencies = [
  "board-game-geom 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
