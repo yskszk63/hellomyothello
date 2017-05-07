@@ -7,8 +7,9 @@ extern crate rand;
 use app::{App, AppSettings};
 use opengl_graphics::{GlGraphics, OpenGL};
 use piston::input::{Input, RenderEvent, UpdateEvent, PressEvent, MouseCursorEvent, Button};
-use piston::window::{OpenGLWindow, WindowSettings};
+use piston::window::{OpenGLWindow, WindowSettings, Window};
 use sdl2_window::Sdl2Window;
+use piston::input::{TouchEvent, Touch};
 
 mod app;
 mod board;
@@ -45,6 +46,19 @@ fn handle_event(window: &mut Sdl2Window, gl: &mut GlGraphics, e: Input, app: &mu
 
     if let Some(Button::Mouse(_)) = e.press_args() {
         app.click();
+    }
+
+    if let Some(touch) = e.touch_args() {
+        match touch.touch {
+            Touch::Start => {
+                let size = window.size();
+                let x = (size.width as f64) * touch.x;
+                let y = (size.height as f64) * touch.y;
+                app.mouse_move(x, y);
+                app.click();
+            },
+            _ => {}
+        }
     }
 }
 
