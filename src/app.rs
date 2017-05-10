@@ -59,7 +59,7 @@ impl <'a> App<'a> {
 
             let (w, _) = self.board.size();
             let c = c.trans((w + cell_size * 2) as f64, cell_size as f64);
-            self.board.get_current_state().render(self.settings, c.transform, gl);
+            self.board.get_current_state().render(self.settings, &c, gl);
         });
     }
 

@@ -1,86 +1,30 @@
 use opengl_graphics::{GlGraphics};
 use graphics;
 use graphics::{Transformed, Context};
-use graphics::math::Matrix2d;
-use app::AppSettings;
-use std::cell::Cell as StdCell;
+use std::cell::Cell;
 use std::iter;
 use rand;
+use app::AppSettings;
+use square::Square;
+use stone::Stone;
 
-#[derive(Copy, Clone, PartialEq)]
-pub enum CellState {
-    Black,
-    White,
-    Empty,
-}
-
-impl CellState {
-    pub fn render(&self, settings: &AppSettings, transform: Matrix2d, gl: &mut GlGraphics) {
-        let cell_margin = settings.cell_margin();
-        let cell_size = settings.cell_size;
-        let stone = graphics::rectangle::square(cell_margin * 2f64, cell_margin * 2f64, cell_size as f64 - (cell_margin * 4f64));
-
-        match *self {
-            CellState::Black => {
-                graphics::ellipse(settings.black_stone_color, stone, transform, gl)
-            },
-            CellState::White => {
-                graphics::ellipse(settings.white_stone_color, stone, transform, gl)
-            },
-            CellState::Empty => {}
-        }
-    }
-}
-
-struct Cell<'a> {
-    state: StdCell<CellState>,
-    x: u32,
-    y: u32,
-    focused: StdCell<bool>,
-    settings: &'a AppSettings,
-}
-
-impl <'a> Cell<'a> {
-    fn new(settings: &'a AppSettings, x: u32, y: u32) -> Cell<'a> {
-        Cell {
-            state: StdCell::new(CellState::Empty),
-            x: x,
-            y: y,
-            focused: StdCell::new(false),
-            settings: settings,
-        }
-    }
-
-    fn render(&self, ctx: Matrix2d, gl: &mut GlGraphics) {
-        let cell_margin = self.settings.cell_margin();
-        let cell_size = self.settings.cell_size;
-        let inner = graphics::rectangle::square(cell_margin * 1f64, cell_margin * 1f64, cell_size as f64 - (cell_margin * 2f64));
-        let outer = graphics::rectangle::square(cell_margin * 0f64, cell_margin * 0f64, cell_size as f64 - (cell_margin * 0f64));
-
-        let color = if self.focused.get() { self.settings.focused_background_color} else { self.settings.background_color };
-        graphics::rectangle(self.settings.separator_color, outer, ctx, gl);
-        graphics::rectangle(color, inner, ctx, gl);
-        self.state.get().render(self.settings, ctx, gl);
-    }
-
-}
 
 pub struct Board<'a> {
-    cells: Vec<Cell<'a>>,
-    current: StdCell<CellState>,
+    squares: Vec<Square<'a>>,
+    current: Cell<Stone>,
     settings: &'a AppSettings,
-    focus: StdCell<Option<(u32, u32)>>,
-    invalidate: StdCell<bool>,
+    focus: Cell<Option<(u32, u32)>>,
+    invalidate: Cell<bool>,
 }
 
 impl <'a> Board<'a> {
     pub fn new(settings: &'a AppSettings) -> Board<'a> {
         let mut board = Board {
-            cells: Vec::<Cell>::new(),
-            current: StdCell::new(CellState::Black),
+            squares: vec![],
+            current: Cell::new(Stone::Black),
             settings: settings,
-            focus: StdCell::new(None),
-            invalidate: StdCell::new(true),
+            focus: Cell::new(None),
+            invalidate: Cell::new(true),
         };
 
         let herf_of_cols = settings.cols / 2;
@@ -92,13 +36,13 @@ impl <'a> Board<'a> {
         for n in 0..(settings.cols * settings.rows) {
             let x = n as u32 % settings.cols;
             let y = n as u32 / settings.rows;
-            let cell = Cell::new(settings, x, y);
+            let square = Square::new(settings, x, y);
             match (x, y) {
-                (x, y) if (x, y) == white1 || (x, y) == white2 => cell.state.set(CellState::White),
-                (x, y) if (x, y) == black1 || (x, y) == black2 => cell.state.set(CellState::Black),
+                (x, y) if (x, y) == white1 || (x, y) == white2 => square.set_stone(Stone::White),
+                (x, y) if (x, y) == black1 || (x, y) == black2 => square.set_stone(Stone::Black),
                 _ => {}
             }
-            board.cells.push(cell);
+            board.squares.push(square);
         }
 
         board
@@ -110,19 +54,19 @@ impl <'a> Board<'a> {
 
             graphics::clear(self.settings.background_color, gl);
 
-            for (i, cell) in self.cells.iter().enumerate() {
+            for (i, square) in self.squares.iter().enumerate() {
                 let x = i as u32 % self.settings.cols;
                 let y = i as u32 / self.settings.rows;
 
-                let transform = ctx.transform.trans((x * self.settings.cell_size) as f64, (y * self.settings.cell_size) as f64);
-                cell.render(transform, gl);
+                let square_ctx = ctx.trans((x * self.settings.cell_size) as f64, (y * self.settings.cell_size) as f64);
+                square.render(&square_ctx, gl);
             }
         }
     }
 
     pub fn update(&self) {
         self.invalidate.set(true);
-        if self.current.get() == CellState::Black {
+        if self.current.get() == Stone::Black {
             self.cpu();
         }
     }
@@ -131,7 +75,7 @@ impl <'a> Board<'a> {
         (self.settings.cols * self.settings.cell_size, self.settings.cols * self.settings.cell_size)
     }
 
-    pub fn get_current_state(&self) -> CellState {
+    pub fn get_current_state(&self) -> Stone {
         self.current.get()
     }
 
@@ -141,27 +85,27 @@ impl <'a> Board<'a> {
         self.put(x, y);
     }
 
-    fn get_cell<'b>(&'b self, x: u32, y: u32) -> Option<&'b Cell<'a>> {
+    fn get_square<'b>(&'b self, x: u32, y: u32) -> Option<&'b Square<'a>> {
         let index = (y * self.settings.rows + x) as usize;
-        if self.cells.len() > index {
-            Some(&self.cells[index])
+        if self.squares.len() > index {
+            Some(&self.squares[index])
         } else {
             None
         }
     }
 
     pub fn focus(&self, x: u32, y: u32) {
-        if let Some(cell) = self.focus.get().and_then(|(x,y)| { self.get_cell(x, y) }) {
-            cell.focused.set(false);
+        if let Some(square) = self.focus.get().and_then(|(x,y)| { self.get_square(x, y) }) {
+            square.set_focus(false);
         }
-        if let Some(cell) = self.get_cell(x, y) {
-            self.focus.set(Some((cell.x, cell.y)));
-            cell.focused.set(true);
+        if let Some(square) = self.get_square(x, y) {
+            self.focus.set(Some((square.get_x(), square.get_y())));
+            square.set_focus(true);
         }
     }
 
     pub fn click(&self) {
-        if self.current.get() == CellState::White {
+        if self.current.get() == Stone::White {
             if let Some((x, y)) = self.focus.get() {
                 self.put(x, y);
             }
@@ -169,20 +113,20 @@ impl <'a> Board<'a> {
     }
 
     fn put(&self, x: u32, y: u32) {
-        if let Some(cell) = self.get_cell(x, y) {
+        if let Some(square) = self.get_square(x, y) {
             let current = self.current.get();
 
-            match cell.state.get() {
-                CellState::Empty => {
+            match square.get_stone() {
+                Stone::Empty => {
                     if let Some(reversibles) = self.search_reversible(x, y, current) {
-                        cell.state.set(current);
-                        for reversible in reversibles {
-                            self.get_cell(reversible.0, reversible.1).unwrap().state.set(current);
+                        square.set_stone(current);
+                        for (x, y) in reversibles {
+                            self.get_square(x, y).unwrap().set_stone(current);
                         }
                         self.current.set(match self.current.get() {
-                            CellState::Black => CellState::White,
-                            CellState::White => CellState::Black,
-                            _ => CellState::Black
+                            Stone::Black => Stone::White,
+                            Stone::White => Stone::Black,
+                            _ => Stone::Black
                         });
                     }
                 },
@@ -191,7 +135,7 @@ impl <'a> Board<'a> {
         }
     }
 
-    fn search_reversible(&self, x: u32, y: u32, my: CellState) -> Option<Vec<(u32, u32)>> {
+    fn search_reversible(&self, x: u32, y: u32, my: Stone) -> Option<Vec<(u32, u32)>> {
         let left = || { (0..x).rev() };
         let right = || { ((x + 1)..self.settings.rows) };
         let up = || { (0..y).rev() };
@@ -215,11 +159,11 @@ impl <'a> Board<'a> {
         for iter in iters {
             let mut candidates = Vec::new();
             for (tx, ty) in iter {
-                if let Some(state) = self.get_cell(tx, ty).map(|cell| { cell.state.get() }) {
-                    match (my, state) {
-                        (CellState::White, CellState::Black) | (CellState::Black, CellState::White) => candidates.push((tx, ty)),
-                        (CellState::White, CellState::White) | (CellState::Black, CellState::Black) => {vec.append(&mut candidates); break},
-                        (_, CellState::Empty) => break,
+                if let Some(other) = self.get_square(tx, ty).map(|square| { square.get_stone() }) {
+                    match (my, other) {
+                        (Stone::White, Stone::Black) | (Stone::Black, Stone::White) => candidates.push((tx, ty)),
+                        (Stone::White, Stone::White) | (Stone::Black, Stone::Black) => {vec.append(&mut candidates); break},
+                        (_, Stone::Empty) => break,
                         _ => {}
                     }
                 }

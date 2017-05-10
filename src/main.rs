@@ -13,6 +13,8 @@ use piston::input::{TouchEvent, Touch};
 
 mod app;
 mod board;
+mod square;
+mod stone;
 
 fn main() {
     let app_settings = AppSettings::default();
