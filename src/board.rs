@@ -1,8 +1,9 @@
 use opengl_graphics::{GlGraphics};
 use graphics;
 use graphics::{Transformed, Context};
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::iter;
+use std::collections::VecDeque;
 use rand;
 use app::AppSettings;
 use square::Square;
@@ -15,6 +16,7 @@ pub struct Board<'a> {
     settings: &'a AppSettings,
     focus: Cell<Option<(u32, u32)>>,
     invalidate: Cell<bool>,
+    queue: RefCell<VecDeque<(u32, u32)>>,
 }
 
 impl <'a> Board<'a> {
@@ -25,6 +27,7 @@ impl <'a> Board<'a> {
             settings: settings,
             focus: Cell::new(None),
             invalidate: Cell::new(true),
+            queue: RefCell::new(VecDeque::new()),
         };
 
         let herf_of_cols = settings.cols / 2;
@@ -66,8 +69,10 @@ impl <'a> Board<'a> {
 
     pub fn update(&self) {
         self.invalidate.set(true);
-        if self.current.get() == Stone::Black {
-            self.cpu();
+        match self.current.get() {
+            Stone::Black => self.cpu(),
+            Stone::White => if let Some((x, y)) = self.queue.borrow_mut().pop_front() { self.put(x, y) },
+            _ => {}
         }
     }
 
@@ -105,10 +110,8 @@ impl <'a> Board<'a> {
     }
 
     pub fn click(&self) {
-        if self.current.get() == Stone::White {
-            if let Some((x, y)) = self.focus.get() {
-                self.put(x, y);
-            }
+        if let Some((x, y)) = self.focus.get() {
+            self.queue.borrow_mut().push_back((x, y));
         }
     }
 
