@@ -42,8 +42,18 @@ impl Square {
         self.stone.get().render(env, ctx, gl)
     }
 
-    pub fn set_stone(&self, stone: Stone) {
+    pub fn put_stone(&self, env: &AppEnv, stone: Stone) {
+        match self.stone.get() {
+            Stone::Black => env.player_for(Stone::Black).dec(),
+            Stone::White => env.player_for(Stone::White).dec(),
+            Stone::Empty => {},
+        }
         self.stone.set(stone);
+        match self.stone.get() {
+            Stone::Black => env.player_for(Stone::Black).inc(),
+            Stone::White => env.player_for(Stone::White).inc(),
+            Stone::Empty => {},
+        }
     }
 
     pub fn get_stone(&self) -> Stone {

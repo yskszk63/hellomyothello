@@ -33,4 +33,8 @@ cargo-release:
 	env EMMAKEN_CFLAGS='-s USE_SDL=2 -O3' cargo build --target=wasm32-unknown-emscripten --release
 
 
+assets/FiraMono-Regular.ttf:
+	mkdir -p assets
+	curl -o $@ 'https://mozilla.github.io/Fira/ttf/FiraMono-Regular.ttf'
+
 .PHONY: cargo-debug cargo-release all

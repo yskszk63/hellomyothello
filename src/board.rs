@@ -24,22 +24,10 @@ impl Board {
             queue: RefCell::new(VecDeque::new()),
         };
 
-        let herf_of_cols = settings.cols / 2;
-        let herf_of_rows = settings.rows / 2;
-        let white1 = (herf_of_cols - 1, herf_of_rows - 1);
-        let white2 = (herf_of_cols - 0, herf_of_rows - 0);
-        let black1 = (herf_of_cols - 0, herf_of_rows - 1);
-        let black2 = (herf_of_cols - 1, herf_of_rows - 0);
         for n in 0..(settings.cols * settings.rows) {
             let x = n as u32 % settings.cols;
             let y = n as u32 / settings.rows;
-            let square = Square::new(x, y);
-            match (x, y) {
-                (x, y) if (x, y) == white1 || (x, y) == white2 => square.set_stone(Stone::White),
-                (x, y) if (x, y) == black1 || (x, y) == black2 => square.set_stone(Stone::Black),
-                _ => {}
-            }
-            board.squares.push(square);
+            board.squares.push(Square::new(x, y));
         }
 
         board
@@ -64,10 +52,9 @@ impl Board {
 
     pub fn update(&self, env: &AppEnv) {
         env.invalidate.set(true);
-        match env.current.get() {
-            Stone::Black => self.cpu(env),
-            Stone::White => if let Some((x, y)) = self.queue.borrow_mut().pop_front() { self.put(env, x, y) },
-            _ => {}
+        match env.current_player().cpu {
+            true => self.cpu(env),
+            false => if let Some((x, y)) = self.queue.borrow_mut().pop_front() { self.put(env, x, y) },
         }
     }
 
@@ -81,7 +68,7 @@ impl Board {
         self.put(env, x, y);
     }
 
-    fn get_square<'b>(&'b self, env: &AppEnv, x: u32, y: u32) -> Option<&'b Square> {
+    pub fn get_square<'b>(&'b self, env: &AppEnv, x: u32, y: u32) -> Option<&'b Square> {
         let index = (y * env.settings.rows + x) as usize;
         if self.squares.len() > index {
             Some(&self.squares[index])
@@ -108,20 +95,16 @@ impl Board {
 
     fn put(&self, env: &AppEnv, x: u32, y: u32) {
         if let Some(square) = self.get_square(env, x, y) {
-            let current = env.current.get();
+            let current = env.current_player().stone;
 
             match square.get_stone() {
                 Stone::Empty => {
                     if let Some(reversibles) = self.search_reversible(env, x, y, current) {
-                        square.set_stone(current);
+                        square.put_stone(env, current);
                         for (x, y) in reversibles {
-                            self.get_square(env, x, y).unwrap().set_stone(current);
+                            self.get_square(env, x, y).unwrap().put_stone(env, current);
                         }
-                        env.current.set(match env.current.get() {
-                            Stone::Black => Stone::White,
-                            Stone::White => Stone::Black,
-                            _ => Stone::Black
-                        });
+                        env.switch_player();
                     }
                 },
                 _ => {}

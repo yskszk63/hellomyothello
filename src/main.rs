@@ -15,6 +15,7 @@ mod app;
 mod board;
 mod square;
 mod stone;
+mod player;
 
 fn main() {
     let app_settings = AppSettings::default();
