@@ -1,8 +1,10 @@
 use opengl_graphics::{GlGraphics};
 use piston::input::{RenderArgs};
 use board::Board;
+use stone::Stone;
 use graphics::Transformed;
 use graphics::color;
+use std::cell::Cell;
 
 pub struct AppSettings {
     pub cell_size: u32,
@@ -16,7 +18,7 @@ pub struct AppSettings {
 }
 
 impl Default for AppSettings {
-    fn default() -> Self {
+    fn default() -> AppSettings {
         AppSettings {
             cell_size: 40,
             cols: 8,
@@ -35,52 +37,62 @@ impl AppSettings {
     }
 }
 
+pub struct AppEnv<'a> {
+    pub settings: &'a AppSettings,
+    pub board: Board,
+    pub invalidate: Cell<bool>,
+    pub current: Cell<Stone>,
+}
+
 pub struct App<'a> {
-    pub win_size: (u32, u32),
-    settings: &'a AppSettings,
-    board: Board<'a>,
+    env: AppEnv<'a>,
 }
 
 impl <'a> App<'a> {
     pub fn new(settings: &'a AppSettings) -> Self {
         let board = Board::new(settings);
-        let (w, h) = board.size();
-        let win_size = (w + settings.cell_size * 4, h + settings.cell_size * 2);
-        App {
-            win_size: win_size,
+        let env = AppEnv {
             settings: settings,
             board: board,
-        }
+            invalidate: Cell::new(false),
+            current: Cell::new(Stone::White),
+        };
+        App { env: env, }
+    }
+
+    pub fn size(&self) -> (u32, u32) {
+        let (w, h) = self.env.board.size(&self.env);
+        (w + self.env.settings.cell_size * 4, h + self.env.settings.cell_size * 2)
     }
 
     pub fn render(&mut self, args: &RenderArgs, gl: &mut GlGraphics) {
         gl.draw(args.viewport(), |c, gl| {
-            let cell_size = self.settings.cell_size;
-            self.board.render(&c.trans(cell_size as f64, cell_size as f64), gl);
+            let cell_size = self.env.settings.cell_size;
+            self.env.board.render(&self.env, &c.trans(cell_size as f64, cell_size as f64), gl);
 
-            let (w, _) = self.board.size();
+            let (w, _) = self.env.board.size(&self.env);
             let c = c.trans((w + cell_size * 2) as f64, cell_size as f64);
-            self.board.get_current_state().render(self.settings, &c, gl);
+            self.env.current.get().render(&self.env, &c, gl);
         });
     }
 
     pub fn update(&mut self) {
-        self.board.update();
+        self.env.board.update(&self.env);
     }
 
     pub fn click(&self) {
-        self.board.click();
+        self.env.board.click();
     }
 
     pub fn mouse_move(&self, x: f64, y: f64) {
         let x = x as u32;
         let y = y as u32;
-        let cell_size = self.settings.cell_size;
-        let (w, h) = self.board.size();
+        let cell_size = self.env.settings.cell_size;
+        let (w, h) = self.env.board.size(&self.env);
         if cell_size <= x && cell_size <= y && (x - cell_size) < w && (y - cell_size) < h {
             let cell_x = (x - cell_size) / cell_size;
             let cell_y = (y - cell_size) / cell_size;
-            self.board.focus(cell_x, cell_y);
+            self.env.board.focus(&self.env, cell_x, cell_y);
         }
     }
 

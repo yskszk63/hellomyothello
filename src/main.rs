@@ -21,7 +21,7 @@ fn main() {
     let app = App::new(&app_settings);
 
     let opengl = OpenGL::V2_1;
-    let window: Sdl2Window = WindowSettings::new(env!("CARGO_PKG_NAME"), app.win_size)
+    let window: Sdl2Window = WindowSettings::new(env!("CARGO_PKG_NAME"), app.size())
         .opengl(opengl)
         .srgb(false)
         .exit_on_esc(true)

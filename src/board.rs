@@ -5,28 +5,22 @@ use std::cell::{Cell, RefCell};
 use std::iter;
 use std::collections::VecDeque;
 use rand;
-use app::AppSettings;
+use app::{AppEnv,AppSettings};
 use square::Square;
 use stone::Stone;
 
 
-pub struct Board<'a> {
-    squares: Vec<Square<'a>>,
-    current: Cell<Stone>,
-    settings: &'a AppSettings,
+pub struct Board {
+    squares: Vec<Square>,
     focus: Cell<Option<(u32, u32)>>,
-    invalidate: Cell<bool>,
     queue: RefCell<VecDeque<(u32, u32)>>,
 }
 
-impl <'a> Board<'a> {
-    pub fn new(settings: &'a AppSettings) -> Board<'a> {
+impl Board {
+    pub fn new(settings: &AppSettings) -> Board {
         let mut board = Board {
             squares: vec![],
-            current: Cell::new(Stone::Black),
-            settings: settings,
             focus: Cell::new(None),
-            invalidate: Cell::new(true),
             queue: RefCell::new(VecDeque::new()),
         };
 
@@ -39,7 +33,7 @@ impl <'a> Board<'a> {
         for n in 0..(settings.cols * settings.rows) {
             let x = n as u32 % settings.cols;
             let y = n as u32 / settings.rows;
-            let square = Square::new(settings, x, y);
+            let square = Square::new(x, y);
             match (x, y) {
                 (x, y) if (x, y) == white1 || (x, y) == white2 => square.set_stone(Stone::White),
                 (x, y) if (x, y) == black1 || (x, y) == black2 => square.set_stone(Stone::Black),
@@ -51,47 +45,44 @@ impl <'a> Board<'a> {
         board
     }
 
-    pub fn render(&self, ctx: &Context, gl: &mut GlGraphics) {
-        if self.invalidate.get() {
-            self.invalidate.set(false);
+    pub fn render(&self, env: &AppEnv, ctx: &Context, gl: &mut GlGraphics) {
+        if env.invalidate.get() {
+            env.invalidate.set(false);
 
-            graphics::clear(self.settings.background_color, gl);
+            graphics::clear(env.settings.background_color, gl);
 
             for (i, square) in self.squares.iter().enumerate() {
-                let x = i as u32 % self.settings.cols;
-                let y = i as u32 / self.settings.rows;
+                let x = i as u32 % env.settings.cols;
+                let y = i as u32 / env.settings.rows;
 
-                let square_ctx = ctx.trans((x * self.settings.cell_size) as f64, (y * self.settings.cell_size) as f64);
-                square.render(&square_ctx, gl);
+                let cell_size = env.settings.cell_size;
+                let square_ctx = ctx.trans((x * cell_size) as f64, (y * cell_size) as f64);
+                square.render(env, &square_ctx, gl);
             }
         }
     }
 
-    pub fn update(&self) {
-        self.invalidate.set(true);
-        match self.current.get() {
-            Stone::Black => self.cpu(),
-            Stone::White => if let Some((x, y)) = self.queue.borrow_mut().pop_front() { self.put(x, y) },
+    pub fn update(&self, env: &AppEnv) {
+        env.invalidate.set(true);
+        match env.current.get() {
+            Stone::Black => self.cpu(env),
+            Stone::White => if let Some((x, y)) = self.queue.borrow_mut().pop_front() { self.put(env, x, y) },
             _ => {}
         }
     }
 
-    pub fn size(&self) -> (u32, u32){
-        (self.settings.cols * self.settings.cell_size, self.settings.cols * self.settings.cell_size)
+    pub fn size(&self, env: &AppEnv) -> (u32, u32){
+        (env.settings.cols * env.settings.cell_size, env.settings.cols * env.settings.cell_size)
     }
 
-    pub fn get_current_state(&self) -> Stone {
-        self.current.get()
+    fn cpu(&self, env: &AppEnv) {
+        let x = rand::random::<u32>() % env.settings.rows;
+        let y = rand::random::<u32>() % env.settings.cols;
+        self.put(env, x, y);
     }
 
-    fn cpu(&self) {
-        let x = rand::random::<u32>() % self.settings.rows;
-        let y = rand::random::<u32>() % self.settings.cols;
-        self.put(x, y);
-    }
-
-    fn get_square<'b>(&'b self, x: u32, y: u32) -> Option<&'b Square<'a>> {
-        let index = (y * self.settings.rows + x) as usize;
+    fn get_square<'b>(&'b self, env: &AppEnv, x: u32, y: u32) -> Option<&'b Square> {
+        let index = (y * env.settings.rows + x) as usize;
         if self.squares.len() > index {
             Some(&self.squares[index])
         } else {
@@ -99,11 +90,11 @@ impl <'a> Board<'a> {
         }
     }
 
-    pub fn focus(&self, x: u32, y: u32) {
-        if let Some(square) = self.focus.get().and_then(|(x,y)| { self.get_square(x, y) }) {
+    pub fn focus(&self, env: &AppEnv, x: u32, y: u32) {
+        if let Some(square) = self.focus.get().and_then(|(x,y)| { self.get_square(env, x, y) }) {
             square.set_focus(false);
         }
-        if let Some(square) = self.get_square(x, y) {
+        if let Some(square) = self.get_square(env, x, y) {
             self.focus.set(Some((square.get_x(), square.get_y())));
             square.set_focus(true);
         }
@@ -115,18 +106,18 @@ impl <'a> Board<'a> {
         }
     }
 
-    fn put(&self, x: u32, y: u32) {
-        if let Some(square) = self.get_square(x, y) {
-            let current = self.current.get();
+    fn put(&self, env: &AppEnv, x: u32, y: u32) {
+        if let Some(square) = self.get_square(env, x, y) {
+            let current = env.current.get();
 
             match square.get_stone() {
                 Stone::Empty => {
-                    if let Some(reversibles) = self.search_reversible(x, y, current) {
+                    if let Some(reversibles) = self.search_reversible(env, x, y, current) {
                         square.set_stone(current);
                         for (x, y) in reversibles {
-                            self.get_square(x, y).unwrap().set_stone(current);
+                            self.get_square(env, x, y).unwrap().set_stone(current);
                         }
-                        self.current.set(match self.current.get() {
+                        env.current.set(match env.current.get() {
                             Stone::Black => Stone::White,
                             Stone::White => Stone::Black,
                             _ => Stone::Black
@@ -138,11 +129,11 @@ impl <'a> Board<'a> {
         }
     }
 
-    fn search_reversible(&self, x: u32, y: u32, my: Stone) -> Option<Vec<(u32, u32)>> {
+    fn search_reversible(&self, env: &AppEnv, x: u32, y: u32, my: Stone) -> Option<Vec<(u32, u32)>> {
         let left = || { (0..x).rev() };
-        let right = || { ((x + 1)..self.settings.rows) };
+        let right = || { ((x + 1)..env.settings.cols) };
         let up = || { (0..y).rev() };
-        let down = || { ((y + 1)..self.settings.cols) };
+        let down = || { ((y + 1)..env.settings.rows) };
         let stayx = || { iter::repeat(x) };
         let stayy = || { iter::repeat(y) };
 
@@ -162,7 +153,7 @@ impl <'a> Board<'a> {
         for iter in iters {
             let mut candidates = Vec::new();
             for (tx, ty) in iter {
-                if let Some(other) = self.get_square(tx, ty).map(|square| { square.get_stone() }) {
+                if let Some(other) = self.get_square(env, tx, ty).map(|square| { square.get_stone() }) {
                     match (my, other) {
                         (Stone::White, Stone::Black) | (Stone::Black, Stone::White) => candidates.push((tx, ty)),
                         (Stone::White, Stone::White) | (Stone::Black, Stone::Black) => {vec.append(&mut candidates); break},

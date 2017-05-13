@@ -1,4 +1,4 @@
-use app::AppSettings;
+use app::AppEnv;
 use graphics;
 use graphics::Context;
 use graphics::rectangle;
@@ -12,14 +12,14 @@ pub enum Stone {
 }
 
 impl Stone {
-    pub fn render(&self, settings: &AppSettings, ctx: &Context, gl: &mut GlGraphics) {
-        let margin = settings.cell_margin() * 2f64;
-        let size = settings.cell_size as f64;
+    pub fn render(&self, env: &AppEnv, ctx: &Context, gl: &mut GlGraphics) {
+        let margin = env.settings.cell_margin() * 2f64;
+        let size = env.settings.cell_size as f64;
         let rect = rectangle::square(margin, margin, size - (margin * 2f64));
 
         let color = match *self {
-            Stone::Black => settings.black_stone_color,
-            Stone::White => settings.white_stone_color,
+            Stone::Black => env.settings.black_stone_color,
+            Stone::White => env.settings.white_stone_color,
             Stone::Empty => return
         };
 
