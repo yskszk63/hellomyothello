@@ -1,6 +1,2 @@
-*.asm.js
-*.js
-*.wasm
 target/
-release/
 debug/

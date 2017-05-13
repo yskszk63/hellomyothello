@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="width=480,initial-scale=1">
+        <title>my test</title>
+        <style>body { margin: 0; }</style>
+    </head>
+    <body>
+        <canvas></canvas>
+        <script>
+(() => {
+    self.Module = {
+        canvas: document.querySelector('canvas')
+    };
+
+    fetch('hello.wasm').then(response => response.arrayBuffer())
+        .then(bin => {
+            Module.wasmBinary = bin;
+            document.body.appendChild(Object.assign(document.createElement('script'), {
+                src: 'hello.js'
+            }));
+        });
+})();
+        </script>
+    </body>
+</html>

@@ -1,5 +1,5 @@
 debug: cargo-debug debug/hello.js debug/hello.wasm debug/index.html
-release: cargo-release release/hello.js release/hello.wasm release/index.html
+release: cargo-release docs/hello.js docs/hello.wasm docs/index.html
 
 debug/hello.js: target/wasm32-unknown-emscripten/debug/*.js
 	mkdir -p debug
@@ -17,16 +17,16 @@ cargo-debug:
 	env EMMAKEN_CFLAGS='-s USE_SDL=2 -O3' cargo build --target=wasm32-unknown-emscripten
 
 
-release/hello.js: target/wasm32-unknown-emscripten/release/*.js
-	mkdir -p release
+docs/hello.js: target/wasm32-unknown-emscripten/release/*.js
+	mkdir -p docs
 	cp $< $@
 
-release/hello.wasm: target/wasm32-unknown-emscripten/release/deps/*.wasm
-	mkdir -p release
+docs/hello.wasm: target/wasm32-unknown-emscripten/release/deps/*.wasm
+	mkdir -p docs
 	cp $< $@
 
-release/index.html: static/index.html
-	mkdir -p release
+docs/index.html: static/index.html
+	mkdir -p docs
 	cp $< $@
 
 cargo-release:
