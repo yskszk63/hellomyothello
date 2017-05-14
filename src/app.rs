@@ -106,7 +106,7 @@ impl <'a> App<'a> {
 
     pub fn size(&self) -> (u32, u32) {
         let (w, h) = self.env.board.size(&self.env);
-        (w + self.env.settings.cell_size * 6, h + self.env.settings.cell_size * 2)
+        (w + self.env.settings.cell_size * 2, h + self.env.settings.cell_size * 6)
     }
 
     pub fn render(&mut self, args: &RenderArgs, gl: &mut GlGraphics) {
@@ -114,8 +114,8 @@ impl <'a> App<'a> {
             let cell_size = self.env.settings.cell_size;
             self.env.board.render(&self.env, &c.trans(cell_size as f64, cell_size as f64), gl);
 
-            let (w, _) = self.env.board.size(&self.env);
-            let c = c.trans((w + cell_size * 2) as f64, cell_size as f64);
+            let (_, h) = self.env.board.size(&self.env);
+            let c = c.trans(cell_size as f64, (h + cell_size * 2) as f64);
             for (i, player) in self.env.players.iter().enumerate() {
                 let c = c.trans(0f64, (cell_size * i as u32) as f64);
                 player.render(&self.env, &c, gl);
