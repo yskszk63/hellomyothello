@@ -48,6 +48,7 @@ pub struct AppEnv<'a> {
     current: Cell<usize>,
     players: [Player; 2],
     pub font: RefCell<GlyphCache<'a>>,
+    done: Cell<bool>,
 }
 impl <'a> AppEnv<'a> {
     pub fn current_player<'b>(&'b self) -> &'b Player {
@@ -61,6 +62,12 @@ impl <'a> AppEnv<'a> {
     }
     pub fn player_for<'b> (&'b self, stone: Stone) -> &'b Player {
         &self.players.iter().find(|p| p.stone == stone).unwrap()
+    }
+    pub fn done(&self) {
+        self.done.set(true)
+    }
+    pub fn is_done(&self) -> bool {
+        self.done.get()
     }
 }
 
@@ -82,6 +89,7 @@ impl <'a> App<'a> {
                 Player::new(Stone::White, !black_is_player),
                 Player::new(Stone::Black, black_is_player) ],
             font: RefCell::new(font),
+            done: Cell::new(false),
         };
         env.current_player().turn.set(true);
 

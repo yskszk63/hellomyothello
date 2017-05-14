@@ -4,16 +4,18 @@ use graphics::{Transformed, Context};
 use std::cell::{Cell, RefCell};
 use std::iter;
 use std::collections::VecDeque;
-use rand;
+use std::collections::BTreeSet;
 use app::{AppEnv,AppSettings};
 use square::Square;
 use stone::Stone;
+use player::Player;
 
 
 pub struct Board {
     squares: Vec<Square>,
     focus: Cell<Option<(u32, u32)>>,
     queue: RefCell<VecDeque<(u32, u32)>>,
+    pub empties: RefCell<BTreeSet<(u32, u32)>>,
 }
 
 impl Board {
@@ -22,12 +24,14 @@ impl Board {
             squares: vec![],
             focus: Cell::new(None),
             queue: RefCell::new(VecDeque::new()),
+            empties: RefCell::new(BTreeSet::new()),
         };
 
         for n in 0..(settings.cols * settings.rows) {
             let x = n as u32 % settings.cols;
             let y = n as u32 / settings.rows;
             board.squares.push(Square::new(x, y));
+            board.empties.borrow_mut().insert((x, y));
         }
 
         board
@@ -52,9 +56,19 @@ impl Board {
 
     pub fn update(&self, env: &AppEnv) {
         env.invalidate.set(true);
-        match env.current_player().cpu {
-            true => self.cpu(env),
-            false => if let Some((x, y)) = self.queue.borrow_mut().pop_front() { self.put(env, x, y) },
+        if !self.empties.borrow().is_empty() {
+            let player = env.current_player();
+
+            if !self.is_putable(env, player) {
+                env.switch_player();
+            } else {
+                match env.current_player().cpu {
+                    true => self.cpu(env, env.current_player()),
+                    false => if let Some((x, y)) = self.queue.borrow_mut().pop_front() { self.put(env, x, y) },
+                }
+            }
+        } else {
+            env.done()
         }
     }
 
@@ -62,10 +76,34 @@ impl Board {
         (env.settings.cols * env.settings.cell_size, env.settings.cols * env.settings.cell_size)
     }
 
-    fn cpu(&self, env: &AppEnv) {
-        let x = rand::random::<u32>() % env.settings.rows;
-        let y = rand::random::<u32>() % env.settings.cols;
-        self.put(env, x, y);
+    fn is_putable(&self, env: &AppEnv, player: &Player) -> bool {
+        let empties = self.empties.borrow().clone();
+        for &(x, y) in empties.iter() {
+            if let Some(_) = self.search_reversible(env, x, y, player.stone) {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn cpu(&self, env: &AppEnv, player: &Player) {
+        let empties = self.empties.borrow().clone();
+        let mut max = None;
+
+        for &(x, y) in empties.iter() {
+            if let Some(reversibles) = self.search_reversible(env, x, y, player.stone) {
+                if let Some((n, _, _)) = max {
+                    if n < reversibles.len() {
+                        max = Some((reversibles.len(), x, y))
+                    }
+                } else {
+                    max = Some((reversibles.len(), x, y))
+                }
+            }
+        }
+        if let Some((_, x, y)) = max {
+            self.put(env, x, y)
+        }
     }
 
     pub fn get_square<'b>(&'b self, env: &AppEnv, x: u32, y: u32) -> Option<&'b Square> {

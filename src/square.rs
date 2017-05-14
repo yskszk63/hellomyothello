@@ -46,7 +46,7 @@ impl Square {
         match self.stone.get() {
             Stone::Black => env.player_for(Stone::Black).dec(),
             Stone::White => env.player_for(Stone::White).dec(),
-            Stone::Empty => {},
+            Stone::Empty => {env.board.empties.borrow_mut().remove(&(self.x, self.y));},
         }
         self.stone.set(stone);
         match self.stone.get() {

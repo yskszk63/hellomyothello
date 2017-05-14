@@ -26,7 +26,7 @@ impl Player {
         let color = env.settings.white_stone_color;
         let cell_size = env.settings.cell_size;
 
-        if self.turn.get() {
+        if self.turn.get() && !env.is_done() {
             graphics::text::Text::new_color(color, 32).draw(
                 ">", font, &ctx.draw_state, ctx.trans(0f64, (cell_size) as f64).transform, gl);
         }
