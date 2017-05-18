@@ -86,8 +86,8 @@ impl <'a> App<'a> {
             invalidate: Cell::new(false),
             current: Cell::new(0),
             players: [
-                Player::new(Stone::White, !black_is_player),
-                Player::new(Stone::Black, black_is_player) ],
+                Player::new(Stone::Black, black_is_player),
+                Player::new(Stone::White, !black_is_player) ],
             font: RefCell::new(font),
             done: Cell::new(false),
         };
