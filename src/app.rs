@@ -27,8 +27,8 @@ impl Default for AppSettings {
             cell_size: 40,
             cols: 8,
             rows: 8,
-            background_color: color::hex("008000"), // green
-            focused_background_color: color::hex("3cb371"), // mediumseagreen
+            background_color: color::hex("3cb371"), // mediumseagreen
+            focused_background_color: color::hex("90ee90"), // lightgreen
             separator_color: color::hex("000000"), // black
             black_stone_color: color::hex("000000"),
             white_stone_color: color::hex("ffffff"),
