@@ -1,4 +1,6 @@
 language: rust
 rust:
   - 1.17.0
+before_script:
+  - rustup target add wasm32-unknown-emscripten
 script: make release
