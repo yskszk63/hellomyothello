@@ -106,7 +106,7 @@ impl <'a> App<'a> {
 
     pub fn size(&self) -> (u32, u32) {
         let (w, h) = self.env.board.size(&self.env);
-        (w + self.env.settings.cell_size * 2, h + self.env.settings.cell_size * 6)
+        (w + self.env.settings.cell_size * 2, h + self.env.settings.cell_size * 5)
     }
 
     pub fn render(&mut self, args: &RenderArgs, gl: &mut GlGraphics) {
