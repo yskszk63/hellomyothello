@@ -5,7 +5,7 @@ rust:
 python:
   - "2.7"
 install:
-  - test ! -d emsdk-portable && { wget https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz && tar xf emsdk-portable.tar.gz; }
+  - test ! -d emsdk-portable && { wget https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz && tar xf emsdk-portable.tar.gz; } || true
   - ./emsdk-portable/emsdk update
   - ./emsdk-portable/emsdk install latest | tail
   - ./emsdk-portable/emsdk activate latest
