@@ -12,5 +12,6 @@ install:
 cache:
   - cargo
 before_script:
+  - source emsdk-portable/emsdk_env.sh
   - rustup target add wasm32-unknown-emscripten
 script: make release
