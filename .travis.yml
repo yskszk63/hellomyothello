@@ -16,4 +16,6 @@ cache:
   - cargo
 before_script:
   - rustup target add wasm32-unknown-emscripten
-script: RUST_BACKTRACE=1 make release
+script: 
+  - echo $EMSCRIPTEN
+  - RUST_BACKTRACE=1 make release
