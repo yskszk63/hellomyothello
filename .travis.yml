@@ -11,7 +11,7 @@ install:
   - ./emsdk-portable/emsdk install latest | tail
   - ./emsdk-portable/emsdk activate latest
   - source emsdk-portable/emsdk_env.sh
-  - export EMSCRIPTEN=`grep EMSCRIPTEN_ROOT | cut -d= -f2`
+  - export EMSCRIPTEN=`grep EMSCRIPTEN_ROOT ~/.emscripten | cut -d= -f2`
 cache:
   - cargo
 before_script:
