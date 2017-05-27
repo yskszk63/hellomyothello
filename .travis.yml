@@ -5,7 +5,8 @@ install:
   - wget https://raw.githubusercontent.com/alpinelinux/alpine-chroot-install/v0.2.1/alpine-chroot-install
       && echo 'd0067831a65c9c1dc6fff01f7450b84006e82e30  alpine-chroot-install' | sha1sum -c
       || exit 1
-  - sudo sh alpine-chroot-install -b edge
-      -p emscripten -p binaryen -p rust -p cargo -p curl
+  - sudo sh alpine-chroot-install -bedge
+      -pemscripten -pbinaryen -prust -pcargo -pcurl -pbuild-base
+      -r 'https://nl.alpinelinux.org/alpine/edge/testing'
 script:
   - /alpine/enter-chroot $USER make
