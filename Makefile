@@ -10,7 +10,7 @@ debug/index.html: static/index.html
 	mkdir -p debug
 	cp $< $@
 
-cargo-debug:
+cargo-debug: assets/FiraMono-Regular.ttf
 	env EMMAKEN_CFLAGS='-s USE_SDL=2 -O3' cargo build --target=wasm32-unknown-emscripten
 
 
@@ -23,7 +23,7 @@ docs/index.html: static/index.html
 	mkdir -p docs
 	cp $< $@
 
-cargo-release:
+cargo-release: assets/FiraMono-Regular.ttf
 	env EMMAKEN_CFLAGS='-s USE_SDL=2 -O3' cargo build --target=wasm32-unknown-emscripten --release
 
 
