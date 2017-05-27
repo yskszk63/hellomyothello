@@ -4,12 +4,8 @@ rust:
   - 1.17.0
 python:
   - "2.7"
-addons:
-  - apt:
-    - sources:
-      - ubuntu-toolchain-r-test
-    - packages:
-      - libstdc++6
+compiler:
+  - gcc-4.9
 install:
   - wget https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz
   - tar xf emsdk-portable.tar.gz
