@@ -7,9 +7,10 @@ extern crate rand;
 use app::{App, AppSettings};
 use opengl_graphics::{GlGraphics, OpenGL};
 use piston::input::{Input, RenderEvent, UpdateEvent, PressEvent, MouseCursorEvent, Button};
-use piston::window::{OpenGLWindow, WindowSettings, Window};
+use piston::window::{WindowSettings, Window};
 use sdl2_window::Sdl2Window;
-use piston::input::{TouchEvent, Touch};
+use piston::input::{EventId, GenericEvent, TouchEvent, Touch};
+use piston::event_loop::{Events, EventSettings};
 
 mod app;
 mod board;
@@ -19,144 +20,111 @@ mod player;
 
 fn main() {
     let app_settings = AppSettings::default();
-    let app = App::new(&app_settings);
+    let mut app = App::new(&app_settings);
 
     let opengl = OpenGL::V2_1;
-    let window: Sdl2Window = WindowSettings::new(env!("CARGO_PKG_NAME"), app.size())
+    let mut window: Sdl2Window = WindowSettings::new(env!("CARGO_PKG_NAME"), app.size())
         .opengl(opengl)
         .srgb(false)
         .exit_on_esc(true)
         .build()
         .expect("failed to build window");
-    let gl = GlGraphics::new(opengl);
+    let mut gl = GlGraphics::new(opengl);
 
-    event_loop::run(window, gl, handle_event, app);
-}
+    event_loop(&mut window, |e, window| {
+        e.render(|args| {
+            app.render(args, &mut gl)
+        });
 
-fn handle_event(window: &mut Sdl2Window, gl: &mut GlGraphics, e: Input, app: &mut App) {
-    if let Some(ref args) = e.render_args() {
-        window.make_current();
-        app.render(args, gl);
-    }
+        e.update(|_| {
+            app.update()
+        });
 
-    if let Some(_) = e.update_args() {
-        app.update();
-    }
+        e.mouse_cursor(|x, y| {
+            app.mouse_move(x, y)
+        });
 
-    if let Some(pos) = e.mouse_cursor_args() {
-        app.mouse_move(pos[0], pos[1]);
-    }
+        e.press(|button| {
+            if let Button::Mouse(_) = button {
+                app.click()
+            }
+        });
 
-    if let Some(Button::Mouse(_)) = e.press_args() {
-        app.click();
-    }
-
-    if let Some(touch) = e.touch_args() {
-        match touch.touch {
-            Touch::Start => {
+        e.touch(|touch| {
+            if let Touch::Start = touch.touch {
                 let size = window.size();
                 let x = (size.width as f64) * touch.x;
                 let y = (size.height as f64) * touch.y;
                 app.mouse_move(x, y);
                 app.click();
-            },
-            _ => {}
-        }
-    }
+            }
+        });
+    })
 }
 
-#[cfg(not(target_os = "emscripten"))]
-mod event_loop {
-    use piston::event_loop::{EventSettings, Events};
-    use piston::input::Input;
-    use sdl2_window::Sdl2Window;
-    use opengl_graphics::GlGraphics;
+fn event_loop<W, F>(window: &mut W, mut handler: F)
+        where W: Window, F: FnMut(Input, &mut W) {
 
-    pub fn run<T>(mut window: Sdl2Window, mut gl: GlGraphics,
-            handler: fn(window: &mut Sdl2Window, gl: &mut GlGraphics, e: Input, arg: &mut T), mut arg: T) {
-        let mut events = Events::new(EventSettings::new());
-        while let Some(e) = events.next(&mut window) {
-            handler(&mut window, &mut gl, e, &mut arg);
+    let mut events = Events::new(EventSettings::new());
+    main_loop::run(|| {
+        loop {
+            if let Some(e) = events.next(window) {
+                match e.event_id() {
+                    EventId("piston/idle") => return true,
+                    _ => handler(e, window)
+                }
+            } else {
+                return false
+            }
         }
-    }
+    })
 }
 
-#[cfg(target_os = "emscripten")]
-mod event_loop {
+mod main_loop {
 
-    extern crate emscripten_sys;
+    #[cfg(target_os="emscripten")]
+    mod emscripten {
+        use std::cell::RefCell;
+        use std::ptr::null_mut;
+        use std::os::raw::{c_int, c_void};
 
-    use piston::input::{Input, AfterRenderArgs, RenderArgs, UpdateArgs};
-    use piston::window::Window;
-    use sdl2_window::Sdl2Window;
-    use opengl_graphics::GlGraphics;
-    use std::mem;
-    use std::os::raw::c_void;
+        #[allow(non_camel_case_types)]
+        type em_callback_func = unsafe extern fn();
 
-    struct Context<T> {
-        last_updated: f64,
-        window: Sdl2Window,
-        gl: GlGraphics,
-        handler: fn(window: &mut Sdl2Window, gl: &mut GlGraphics, e: Input, arg: &mut T),
-        arg: T
-    }
+        extern {
+            pub fn emscripten_set_main_loop(func: em_callback_func, fps: c_int, simulate_infini_loop: c_int);
+            pub fn emscripten_cancel_main_loop();
+        }
 
-    pub fn run<T>(window: Sdl2Window, gl: GlGraphics,
-            handler: fn(window: &mut Sdl2Window, gl: &mut GlGraphics, e: Input, arg: &mut T), arg: T) {
+        thread_local!(static MAIN_LOOP_CALLBACK: RefCell<*mut c_void> = RefCell::new(null_mut()));
 
-        unsafe {
-            let mut events = Box::new(Context {
-                last_updated: emscripten_sys::emscripten_get_now() as f64,
-                window: window,
-                gl: gl,
-                handler: handler,
-                arg: arg
+        pub fn set_main_loop_callback<F>(callback: &mut F) where F: FnMut() -> bool {
+            MAIN_LOOP_CALLBACK.with(|log| {
+                *log.borrow_mut() = callback as *const _ as *mut c_void;
             });
-            let ptr = &mut *events as *mut Context<_> as *mut c_void;
-            emscripten_sys::emscripten_set_main_loop_arg(Some(main_loop_c::<T>), ptr, 0, 1);
-            mem::forget(events);
+
+            unsafe { emscripten_set_main_loop(wrapper::<F>, 0, 1) }
+
+            unsafe extern "C" fn wrapper<F>() where F: FnMut() -> bool {
+                MAIN_LOOP_CALLBACK.with(|z| {
+                    let closure = *z.borrow_mut() as *mut F;
+                    if !(*closure)() {
+                        emscripten_cancel_main_loop()
+                    }
+                })
+            }
         }
     }
 
-    extern "C" fn main_loop_c<T>(arg: *mut c_void) {
-        unsafe {
-            let mut ctx: &mut Context<T> = mem::transmute(arg);
-            let window = &mut ctx.window;
-            let gl = &mut ctx.gl;
-            let handler = ctx.handler;
-            let arg = &mut ctx.arg;
-            window.swap_buffers();
-
-            let e = Input::AfterRender(AfterRenderArgs);
-            handler(window, gl, e, arg);
-
-            while let Some(e) = window.poll_event() {
-                handler(window, gl, e, arg);
+    pub fn run<F>(mut f: F) where F: FnMut() -> bool {
+        #[cfg(not(target_os="emscripten"))]
+        loop {
+            if !f() {
+                break
             }
-
-            if window.should_close() {
-                emscripten_sys::emscripten_cancel_main_loop();
-                return;
-            }
-
-            let now = emscripten_sys::emscripten_get_now() as f64;
-            let dt = now - ctx.last_updated;
-            ctx.last_updated = now;
-
-            let e = Input::Update(UpdateArgs {dt: dt});
-            handler(window, gl, e, arg);
-
-            let size = window.size();
-            let draw_size = window.draw_size();
-            let e = Input::Render(RenderArgs {
-                ext_dt: dt,
-                width: size.width,
-                height: size.height,
-                draw_width: draw_size.width,
-                draw_height: draw_size.height
-            });
-            handler(window, gl, e, arg);
         }
-    }
 
+        #[cfg(target_os="emscripten")]
+        emscripten::set_main_loop_callback(&mut f)
+    }
 }
