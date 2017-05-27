@@ -1,21 +1,11 @@
+sudo: required
 language: rust
 dist: trusty
-rust:
-  - 1.17.0
-python:
-  - "2.7"
 install:
-  - wget https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz
-  - tar xf emsdk-portable.tar.gz
-  - ./emsdk-portable/emsdk update
-  - ./emsdk-portable/emsdk install latest | tail
-  - ./emsdk-portable/emsdk activate latest
-  - source emsdk-portable/emsdk_env.sh
-  - export EMSCRIPTEN=`grep EMSCRIPTEN_ROOT ~/.emscripten | cut -d= -f2`
-cache:
-  - cargo
-before_script:
-  - rustup target add wasm32-unknown-emscripten
-script: 
-  - echo $EMSCRIPTEN
-  - RUST_BACKTRACE=1 make release
+  - wget https://raw.githubusercontent.com/alpinelinux/alpine-chroot-install/v0.2.1/alpine-chroot-install
+      && echo 'd0067831a65c9c1dc6fff01f7450b84006e82e30  alpine-chroot-install' | sha1sum -c
+      || exit 1
+  - sudo sh alpine-chroot-install -b edge
+      -p emscripten -p binaryen -p rust -p cargo -p curl
+script:
+  - /alpine/enter-chroot $USER make
